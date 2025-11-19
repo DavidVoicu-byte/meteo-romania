@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <title>Meteo & Calitatea Aerului – România</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial;
+      background: #0f172a;
+      color: #fff;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      background: radial-gradient(circle at top, #1e3c72 0, #020617 60%);
+      animation: bgMove 15s ease-in-out infinite alternate;
+    }
+    @keyframes bgMove {
+      0% {
+        background-position: 0% 0%;
+      }
+      100% {
+        background-position: 100% 100%;
+      }
+    }
+    .app {
+      width: 100%;
+      max-width: 480px;
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 18px;
+      padding: 16px 16px 10px;
+      box-sizing: border-box;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    h1 {
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 4px;
+      font-size: 1.7rem;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 0.85rem;
+      opacity: 0.9;
+      margin-bottom: 16px;
+    }
+    form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: none;
+      outline: none;
+      font-size: 0.9rem;
+    }
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: #facc15;
+      color: #1f2933;
+      font-weight: 600;
+      transition: transform 0.1s, box-shadow 0.1s, background 0.2s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    button:hover {
+      background: #fde047;
+    }
+    button:active {
+      transform: scale(0.97);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    #loc-btn {
+      width: 100%;
+      margin-top: 4px;
+      background: #22c55e;
+      color: #022c22;
+    }
+    #loc-btn:hover {
+      background: #4ade80;
+    }
+    #status {
+      min-height: 1.2em;
+      margin: 8px 0;
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .city-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .temp {
+      font-size: 2.1rem;
+      font-weight: 700;
+    }
+    .weather-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .weather-icon {
+      font-size: 2.5rem;
+    }
+    .weather-desc {
+      font-size: 0.95rem;
+      text-transform: capitalize;
+    }
+    .weather-extra {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-top: 6px;
+      font-size: 0.85rem;
+      gap: 6px;
+    }
+    .weather-extra div {
+      margin-top: 4px;
+    }
+    #aqi-box {
+      margin-top: 6px;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      color: #111827;
+    }
+    #aqi-details {
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+    .hidden {
+      display: none;
+    }
+    #meta {
+      font-size: 0.8rem;
+      opacity: 0.75;
+      margin-top: 4px;
+      text-align: center;
+    }
+    #last-update {
+      font-size: 0.78rem;
+      opacity: 0.85;
+      margin-top: 6px;
+    }
+    #feels-comment {
+      font-size: 0.78rem;
+      opacity: 0.9;
+      margin-top: 2px;
+    }
+    #advice {
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+    .footer {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      opacity: 0.7;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Meteo & Calitatea aerului</h1>
+    <div class="subtitle">Aplicație simplă pentru România, cu date în timp aproape real (Open-Meteo)</div>
+
+    <form id="search-form">
+      <input type="text" id="city-input" placeholder="Introdu un oraș (ex: Ploiești)" required>
+      <button type="submit">Caută</button>
+    </form>
+
+    <button id="loc-btn">Folosește-mi locația</button>
+
+    <div id="status"></div>
+    <div id="meta"></div>
+
+    <!-- Card meteo -->
+    <div id="weather-card" class="card hidden">
+      <div class="card-header">
+        <div>
+          <div class="city-name" id="city-name"></div>
+          <div id="country-code" style="font-size:0.8rem; opacity:0.8;"></div>
+        </div>
+        <div class="temp" id="temp"></div>
+      </div>
+
+      <div class="weather-main">
+        <div id="weather-icon" class="weather-icon"></div>
+        <div>
+          <div class="weather-desc" id="weather-desc"></div>
+          <div id="feels-like" style="font-size:0.85rem; opacity:0.9;"></div>
+          <div id="feels-comment"></div>
+        </div>
+      </div>
+
+      <div class="weather-extra">
+        <div id="humidity"></div>
+        <div id="wind"></div>
+        <div id="pressure"></div>
+      </div>
+
+      <div id="last-update"></div>
+    </div>
+
+    <!-- Card calitatea aerului -->
+    <div id="aqi-card" class="card hidden">
+      <strong>Calitatea aerului</strong>
+      <div id="aqi-box">
+        <div id="aqi-value"></div>
+        <div id="aqi-text"></div>
+        <div id="advice"></div>
+        <div id="aqi-details"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Proiect România – date furnizate de Open-Meteo (weather & air quality API)
+    </div>
+  </div>
+
+  <script>
+    const searchForm = document.getElementById("search-form");
+    const cityInput = document.getElementById("city-input");
+    const locBtn = document.getElementById("loc-btn");
+    const statusEl = document.getElementById("status");
+    const metaEl = document.getElementById("meta");
+
+    const weatherCard = document.getElementById("weather-card");
+    const cityNameEl = document.getElementById("city-name");
+    const countryCodeEl = document.getElementById("country-code");
+    const tempEl = document.getElementById("temp");
+    const weatherIconEl = document.getElementById("weather-icon");
+    const weatherDescEl = document.getElementById("weather-desc");
+    const feelsLikeEl = document.getElementById("feels-like");
+    const feelsCommentEl = document.getElementById("feels-comment");
+    const humidityEl = document.getElementById("humidity");
+    const windEl = document.getElementById("wind");
+    const pressureEl = document.getElementById("pressure");
+    const lastUpdateEl = document.getElementById("last-update");
+
+    const aqiCard = document.getElementById("aqi-card");
+    const aqiBox = document.getElementById("aqi-box");
+    const aqiValueEl = document.getElementById("aqi-value");
+    const aqiTextEl = document.getElementById("aqi-text");
+    const aqiDetailsEl = document.getElementById("aqi-details");
+    const adviceEl = document.getElementById("advice");
+
+    // ---- Event listeners ----
+
+    searchForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const city = cityInput.value.trim();
+      if (city) {
+        getByCity(city);
+      }
+    });
+
+    locBtn.addEventListener("click", () => {
+      getByLocation();
+    });
+
+    // ---- High-level functions ----
+
+    function getByCity(cityName) {
+      statusEl.textContent = "Caut orașul...";
+      metaEl.textContent = "";
+      weatherCard.classList.add("hidden");
+      aqiCard.classList.add("hidden");
+
+      const geoUrl =
+        "https://geocoding-api.open-meteo.com/v1/search?name=" +
+        encodeURIComponent(cityName) +
+        "&count=1&language=ro&format=json";
+
+      fetch(geoUrl)
+        .then((res) => {
+          if (!res.ok) throw new Error("Eroare la geocodare");
+          return res.json();
+        })
+        .then((data) => {
+          if (!data.results || data.results.length === 0) {
+            throw new Error("Orașul nu a fost găsit.");
+          }
+          const place = data.results[0];
+          const lat = place.latitude;
+          const lon = place.longitude;
+          const labelCity = place.name + (place.admin1 ? ", " + place.admin1 : "");
+          const country = place.country_code || "";
+          metaEl.textContent = `Coordonate: ${lat.toFixed(3)}°, ${lon.toFixed(3)}°`;
+          getWeatherAndAQ(lat, lon, labelCity, country);
+        })
+        .catch((err) => {
+          statusEl.textContent = err.message || "Nu am putut găsi acest oraș.";
+          weatherCard.classList.add("hidden");
+          aqiCard.classList.add("hidden");
+        });
+    }
+
+    function getByLocation() {
+      if (!navigator.geolocation) {
+        statusEl.textContent = "Geolocalizarea nu este suportată pe acest dispozitiv.";
+        return;
+      }
+      statusEl.textContent = "Îți preiau locația...";
+      metaEl.textContent = "";
+      weatherCard.classList.add("hidden");
+      aqiCard.classList.add("hidden");
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+
+          metaEl.textContent = `Coordonatele tale: ${lat.toFixed(3)}°, ${lon.toFixed(3)}°`;
+
+          // Reverse geocoding pentru numele orașului
+          const reverseUrl =
+            "https://geocoding-api.open-meteo.com/v1/reverse?latitude=" +
+            lat +
+            "&longitude=" +
+            lon +
+            "&count=1&language=ro&format=json";
+
+          fetch(reverseUrl)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+              let labelCity = "Locația ta";
+              let country = "";
+              if (data && data.results && data.results.length > 0) {
+                const place = data.results[0];
+                labelCity =
+                  place.name + (place.admin1 ? ", " + place.admin1 : "");
+                country = place.country_code || "";
+              }
+              getWeatherAndAQ(lat, lon, labelCity, country);
+            })
+            .catch(() => {
+              getWeatherAndAQ(lat, lon, "Locația ta", "");
+            });
+        },
+        () => {
+          statusEl.textContent = "Nu am putut obține locația. Te rog să permiți accesul.";
+        }
+      );
+    }
+
+    function getWeatherAndAQ(lat, lon, cityLabel, countryCode) {
+      statusEl.textContent = "Încărcare meteo și calitatea aerului...";
+
+      weatherCard.classList.add("hidden");
+      aqiCard.classList.add("hidden");
+
+      const weatherUrl =
+        "https://api.open-meteo.com/v1/forecast?" +
+        "latitude=" + lat +
+        "&longitude=" + lon +
+        "&current_weather=true" +
+        "&hourly=relativehumidity_2m,apparent_temperature,pressure_msl,wind_speed_10m" +
+        "&timezone=auto";
+
+      const aqiUrl =
+        "https://air-quality-api.open-meteo.com/v1/air-quality?" +
+        "latitude=" + lat +
+        "&longitude=" + lon +
+        "&hourly=pm2_5,pm10,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone" +
+        "&timezone=auto";
+
+      Promise.all([fetch(weatherUrl), fetch(aqiUrl)])
+        .then(([wRes, aRes]) => {
+          if (!wRes.ok) throw new Error("Eroare la datele meteo");
+          if (!aRes.ok) throw new Error("Eroare la datele de calitate a aerului");
+          return Promise.all([wRes.json(), aRes.json()]);
+        })
+        .then(([weatherData, aqiData]) => {
+          renderWeather(weatherData, cityLabel, countryCode);
+          renderAQI(aqiData);
+          statusEl.textContent = "Gata.";
+        })
+        .catch((err) => {
+          console.error(err);
+          statusEl.textContent = "Nu am putut încărca datele. Încearcă din nou.";
+          weatherCard.classList.add("hidden");
+          aqiCard.classList.add("hidden");
+        });
+    }
+
+    // ---- Helpers ----
+
+    function findClosestIndexToTime(timeArray, targetTimeStr) {
+      if (!Array.isArray(timeArray) || timeArray.length === 0) return 0;
+      if (!targetTimeStr) return 0;
+      const target = Date.parse(targetTimeStr);
+      if (isNaN(target)) return 0;
+      let bestIndex = 0;
+      let bestDiff = Infinity;
+      for (let i = 0; i < timeArray.length; i++) {
+        const t = Date.parse(timeArray[i]);
+        if (isNaN(t)) continue;
+        const diff = Math.abs(t - target);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIndex = i;
+        }
+      }
+      return bestIndex;
+    }
+
+    function findClosestIndexToNow(timeArray) {
+      if (!Array.isArray(timeArray) || timeArray.length === 0) return 0;
+      const now = Date.now();
+      let bestIndex = 0;
+      let bestDiff = Infinity;
+      for (let i = 0; i < timeArray.length; i++) {
+        const t = Date.parse(timeArray[i]);
+        if (isNaN(t)) continue;
+        const diff = Math.abs(t - now);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIndex = i;
+        }
+      }
+      return bestIndex;
+    }
+
+    function getWeatherInfo(code) {
+      // Open-Meteo weather code → descriere + emoji (în română)
+      if (code === 0) return { label: "Cer senin", emoji: "☀️" };
+      if (code === 1 || code === 2) return { label: "Parțial noros", emoji: "⛅" };
+      if (code === 3) return { label: "Înnorat", emoji: "☁️" };
+      if (code === 45 || code === 48) return { label: "Ceață", emoji: "🌫️" };
+      if ([51,53,55,56,57].includes(code)) return { label: "Burniță", emoji: "🌦️" };
+      if ([61,63,65,66,67].includes(code)) return { label: "Ploaie", emoji: "🌧️" };
+      if ([71,73,75,77,85,86].includes(code)) return { label: "Ninsoare", emoji: "❄️" };
+      if ([80,81,82].includes(code)) return { label: "Averse", emoji: "🌦️" };
+      if ([95,96,99].includes(code)) return { label: "Furtună", emoji: "⛈️" };
+      return { label: "Vreme necunoscută", emoji: "❔" };
+    }
+
+    function getPM25Category(pm25) {
+      // Categorii simple PM2.5 (µg/m³) – explicații în română
+      if (pm25 <= 10) {
+        return {
+          label: "Bun",
+          color: "#9cff9c",
+          text: "Aer foarte bun. Fără riscuri semnificative pentru sănătate.",
+          advice: "Poți sta liniștit afară, inclusiv pentru sport sau plimbări lungi. 🌳"
+        };
+      } else if (pm25 <= 25) {
+        return {
+          label: "Destul de bun",
+          color: "#ffff99",
+          text: "Calitatea aerului este acceptabilă. Persoanele foarte sensibile pot resimți ușoare efecte.",
+          advice: "Activitățile în aer liber sunt în regulă pentru majoritatea oamenilor. 🙂"
+        };
+      } else if (pm25 <= 50) {
+        return {
+          label: "Moderat",
+          color: "#ffcc99",
+          text: "Aerul este în regulă pentru majoritatea, dar persoanele sensibile ar trebui să limiteze efortul intens în aer liber.",
+          advice: "Dacă ai astm sau alte probleme respiratorii, încearcă să eviți alergatul intens afară. 🏃‍♂️"
+        };
+      } else if (pm25 <= 75) {
+        return {
+          label: "Slab",
+          color: "#ff9999",
+          text: "Calitatea aerului este slabă. E mai bine să reduci timpul petrecut afară, mai ales lângă trafic.",
+          advice: "Încearcă să ții geamurile închise și evită drumurile lungi pe jos pe arterele aglomerate. 🚗"
+        };
+      } else {
+        return {
+          label: "Foarte slab",
+          color: "#a52a2a",
+          text: "Calitatea aerului este foarte slabă. Pot apărea efecte negative pentru sănătate chiar și la persoanele sănătoase.",
+          advice: "Dacă poți, stai mai mult în interior și amână sportul afară pentru altă zi. 😷"
+        };
+      }
+    }
+
+    // ---- Rendering ----
+
+    function renderWeather(data, cityLabel, countryCode) {
+      if (!data || !data.current_weather) {
+        weatherCard.classList.add("hidden");
+        return;
+      }
+
+      weatherCard.classList.remove("hidden");
+
+      const cw = data.current_weather;
+      const hourly = data.hourly || {};
+      const timeIndex = findClosestIndexToTime(
+        hourly.time || [],
+        cw.time
+      );
+
+      const temp = Math.round(cw.temperature);
+      const feelsLike =
+        hourly.apparent_temperature &&
+        typeof hourly.apparent_temperature[timeIndex] === "number"
+          ? Math.round(hourly.apparent_temperature[timeIndex])
+          : temp;
+      const humidity =
+        hourly.relativehumidity_2m &&
+        typeof hourly.relativehumidity_2m[timeIndex] === "number"
+          ? hourly.relativehumidity_2m[timeIndex]
+          : null;
+      const pressure =
+        hourly.pressure_msl &&
+        typeof hourly.pressure_msl[timeIndex] === "number"
+          ? Math.round(hourly.pressure_msl[timeIndex])
+          : null;
+      const windSpeed = cw.windspeed;
+      const info = getWeatherInfo(cw.weathercode);
+
+      cityNameEl.textContent = cityLabel || "Locație";
+      countryCodeEl.textContent = countryCode ? countryCode : "";
+      tempEl.textContent = temp + "°C";
+      weatherIconEl.textContent = info.emoji;
+      weatherDescEl.textContent = info.label;
+      feelsLikeEl.textContent = "Se simte ca " + feelsLike + "°C";
+
+      const diff = feelsLike - temp;
+      if (Math.abs(diff) <= 1) {
+        feelsCommentEl.textContent = "Temperatura resimțită este aproape identică cu cea reală.";
+      } else if (diff > 1) {
+        feelsCommentEl.textContent = "Se resimte mai cald decât temperatura indicată.";
+      } else {
+        feelsCommentEl.textContent = "Se resimte mai rece decât temperatura indicată.";
+      }
+
+      humidityEl.textContent = humidity !== null ? "Umiditate: " + humidity + "%" : "";
+      windEl.textContent = "Vânt: " + windSpeed.toFixed(1) + " km/h";
+      pressureEl.textContent = pressure !== null ? "Presiune: " + pressure + " hPa" : "";
+
+      // Ultima actualizare
+      if (cw.time) {
+        const d = new Date(cw.time);
+        lastUpdateEl.textContent =
+          "Ultima actualizare: " +
+          d.toLocaleString("ro-RO", {
+            weekday: "short",
+            hour: "2-digit",
+            minute: "2-digit"
+          });
+      } else {
+        lastUpdateEl.textContent = "";
+      }
+    }
+
+    function renderAQI(data) {
+      if (!data || !data.hourly || !data.hourly.pm2_5) {
+        aqiCard.classList.add("hidden");
+        return;
+      }
+
+      aqiCard.classList.remove("hidden");
+
+      const hourly = data.hourly;
+      const idx = findClosestIndexToNow(hourly.time || []);
+
+      const pm25 = hourly.pm2_5[idx];
+      const pm10 = hourly.pm10 ? hourly.pm10[idx] : null;
+      const o3 = hourly.ozone ? hourly.ozone[idx] : null;
+      const no2 = hourly.nitrogen_dioxide ? hourly.nitrogen_dioxide[idx] : null;
+      const so2 = hourly.sulphur_dioxide ? hourly.sulphur_dioxide[idx] : null;
+      const co = hourly.carbon_monoxide ? hourly.carbon_monoxide[idx] : null;
+
+      const info = getPM25Category(pm25);
+      aqiBox.style.backgroundColor = info.color;
+
+      aqiValueEl.textContent =
+        "PM2.5: " + pm25.toFixed(1) + " µg/m³ – " + info.label;
+      aqiTextEl.textContent = info.text;
+      adviceEl.textContent = info.advice;
+
+      let details = [];
+      if (pm10 !== null) details.push("PM10: " + pm10.toFixed(1) + " µg/m³");
+      if (o3 !== null) details.push("O₃: " + o3.toFixed(1) + " µg/m³");
+      if (no2 !== null) details.push("NO₂: " + no2.toFixed(1) + " µg/m³");
+      if (so2 !== null) details.push("SO₂: " + so2.toFixed(1) + " µg/m³");
+      if (co !== null) details.push("CO: " + co.toFixed(1) + " µg/m³");
+
+      aqiDetailsEl.textContent = details.join(", ");
+    }
+  </script>
+</body>
+</html>
